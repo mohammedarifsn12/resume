@@ -60,14 +60,13 @@ def rewrite_ats_resume(resume_text, job_desc):
     """
     return get_gemini_response(prompt)
 
-# Function to create an ATS-optimized resume PDF in memory and return bytes
 def create_ats_pdf(text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", size=11)
 
-    for line in text.split("\n"):
+    for line in text.splitlines():  # Use splitlines()
         if line.strip():
             if ":" in line:  # Formatting section headings
                 pdf.set_font("Arial", style="B", size=12)
@@ -84,37 +83,39 @@ def create_ats_pdf(text):
 
 # Streamlit UI
 st.title("📄 AI Resume Matchmaking System (ATS-Friendly)")
-st.write("Upload your resume and paste a job description to check compatibility, get ATS-friendly improvement suggestions, and download an optimized resume.")
 
-# Upload Resume PDF
 uploaded_file = st.file_uploader("Upload Your Resume (PDF)", type=["pdf"])
-
-# Input Job Description
 job_desc = st.text_area("Paste Job Description", placeholder="Enter job description here...")
 
 if uploaded_file is not None:
-    resume_text = extract_text_from_pdf(uploaded_file)
-    st.text_area("Extracted Resume Text", resume_text, height=200)
+    try:  # Add a try-except block for PDF extraction errors
+        resume_text = extract_text_from_pdf(uploaded_file)
+        st.text_area("Extracted Resume Text", resume_text, height=200)
 
-    if st.button("Find Match Score & Get ATS Suggestions"):
-        if job_desc:
-            match_score = calculate_match(resume_text, job_desc)
-            st.success(f"✅ Match Score: {match_score:.2f}%")
+        if st.button("Find Match Score & Get ATS Suggestions"):
+            if job_desc:
+                match_score = calculate_match(resume_text, job_desc)
+                st.success(f"✅ Match Score: {match_score:.2f}%")
 
-            st.subheader("🔹 Resume Improvement Suggestions")
-            suggestions = get_resume_improvements(resume_text, job_desc)
-            st.write(suggestions)
+                st.subheader("🔹 Resume Improvement Suggestions")
+                suggestions = get_resume_improvements(resume_text, job_desc)
+                st.write(suggestions)
 
-            st.subheader("🔹 ATS-Optimized Resume")
-            rewritten_resume = rewrite_ats_resume(resume_text, job_desc)
-            st.text_area("ATS-Friendly Resume", rewritten_resume, height=300)
+                st.subheader("🔹 ATS-Optimized Resume")
+                rewritten_resume = rewrite_ats_resume(resume_text, job_desc)
+                st.text_area("ATS-Friendly Resume", rewritten_resume, height=300)
 
-            if st.button("Download ATS-Friendly Resume as PDF"):
-                pdf_bytes = create_ats_pdf(rewritten_resume)
-                b64 = base64.b64encode(pdf_bytes).decode()
-                href = f'<a href="data:application/pdf;base64,{b64}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>'
-                st.markdown(href, unsafe_allow_html=True)
+                if st.button("Download ATS-Friendly Resume as PDF"):
+                    try: # Try-except for PDF creation/download
+                        pdf_bytes = create_ats_pdf(rewritten_resume)
+                        b64 = base64.b64encode(pdf_bytes).decode()
+                        href = f'<a href="data:application/pdf;base64,{b64}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>'
+                        st.markdown(href, unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error during PDF creation/download: {e}") # Show specific error
 
-        else:
-            st.warning("⚠ Please enter the job description.")
+            else:
+                st.warning("⚠ Please enter the job description.")
 
+    except Exception as e:
+        st.error(f"Error during PDF processing: {e}")  # Show specific error
