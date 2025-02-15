@@ -60,15 +60,20 @@ def rewrite_ats_resume(resume_text, job_desc):
     """
     return get_gemini_response(prompt)
 
+@st.cache_data  # Cache the rewritten resume
+def get_rewritten_resume(resume_text, job_desc):
+    return rewrite_ats_resume(resume_text, job_desc)
+
+
 def create_ats_pdf(text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", size=11)
 
-    for line in text.splitlines():  # Use splitlines()
+    for line in text.splitlines():
         if line.strip():
-            if ":" in line:  # Formatting section headings
+            if ":" in line:
                 pdf.set_font("Arial", style="B", size=12)
                 pdf.cell(200, 8, txt=line, ln=True, align='L')
                 pdf.set_font("Arial", size=11)
@@ -88,7 +93,7 @@ uploaded_file = st.file_uploader("Upload Your Resume (PDF)", type=["pdf"])
 job_desc = st.text_area("Paste Job Description", placeholder="Enter job description here...")
 
 if uploaded_file is not None:
-    try:  # Add a try-except block for PDF extraction errors
+    try:
         resume_text = extract_text_from_pdf(uploaded_file)
         st.text_area("Extracted Resume Text", resume_text, height=200)
 
@@ -102,20 +107,26 @@ if uploaded_file is not None:
                 st.write(suggestions)
 
                 st.subheader("🔹 ATS-Optimized Resume")
-                rewritten_resume = rewrite_ats_resume(resume_text, job_desc)
+                rewritten_resume = get_rewritten_resume(resume_text, job_desc)
                 st.text_area("ATS-Friendly Resume", rewritten_resume, height=300)
 
                 if st.button("Download ATS-Friendly Resume as PDF"):
-                    try: # Try-except for PDF creation/download
+                    try:
                         pdf_bytes = create_ats_pdf(rewritten_resume)
                         b64 = base64.b64encode(pdf_bytes).decode()
                         href = f'<a href="data:application/pdf;base64,{b64}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>'
                         st.markdown(href, unsafe_allow_html=True)
+
+                        print(f"Length of pdf_bytes: {len(pdf_bytes)}")
+                        print(f"Href: {href[:200]}...")
+
                     except Exception as e:
-                        st.error(f"Error during PDF creation/download: {e}") # Show specific error
+                        st.error(f"Error during PDF creation/download: {e}")
+                        print(f"PDF creation/download error: {e}")
 
             else:
                 st.warning("⚠ Please enter the job description.")
 
     except Exception as e:
-        st.error(f"Error during PDF processing: {e}")  # Show specific error
+        st.error(f"Error during PDF processing: {e}")
+        print(f"PDF processing error: {e}")
