@@ -64,7 +64,6 @@ def rewrite_ats_resume(resume_text, job_desc):
 def get_rewritten_resume(resume_text, job_desc):
     return rewrite_ats_resume(resume_text, job_desc)
 
-
 def create_ats_pdf(text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -115,7 +114,7 @@ if uploaded_file is not None:
                         pdf_bytes = create_ats_pdf(rewritten_resume)
                         b64 = base64.b64encode(pdf_bytes).decode()
                         href = f'<a href="data:application/pdf;base64,{b64}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>'
-                        st.markdown(href, unsafe_allow_html=True)
+                        st.markdown(href, unsafe_allow_html=True)  # Link appears *after* click
 
                         print(f"Length of pdf_bytes: {len(pdf_bytes)}")
                         print(f"Href: {href[:200]}...")
