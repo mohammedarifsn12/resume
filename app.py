@@ -5,28 +5,28 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fpdf import FPDF
 
-# Set up Gemini AI API Key
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Configure Google Gemini API Key
+genai.configure(api_key="GEMINI_API_KEY")  # Replace with your Gemini API key
 
-# Load pre-trained Sentence Transformer model for job matching
+# Load pre-trained sentence transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Function to extract text from a PDF
+# Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page in pdf_reader.pages:
         text += page.extract_text() + "\n"
-    return text.strip()
+    return text
 
-# Function to calculate match score between resume and job description
+# Function to calculate resume-job match percentage
 def calculate_match(resume_text, job_desc):
     resume_embedding = model.encode([resume_text])
     job_embedding = model.encode([job_desc])
     similarity_score = cosine_similarity(resume_embedding, job_embedding)[0][0] * 100
     return similarity_score
 
-# Function to get resume improvement suggestions using Gemini AI
+# Function to get AI-powered resume improvement suggestions
 def get_resume_improvements(resume_text, job_desc):
     prompt = f"""
     Here is a candidate's resume:
@@ -37,11 +37,14 @@ def get_resume_improvements(resume_text, job_desc):
 
     Please suggest improvements to make the resume ATS-friendly. Highlight missing skills, weak points, and best formatting practices.
     """
-    
-    response = genai.chat(messages=[{"role": "user", "content": prompt}])
+
+    # Initialize Gemini AI model
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(prompt)
+
     return response.text if response else "No suggestions available."
 
-# Function to rewrite resume in ATS-friendly format using Gemini AI
+# Function to rewrite resume in an ATS-friendly format
 def rewrite_ats_resume(resume_text, job_desc):
     prompt = f"""
     Here is a candidate's resume:
@@ -50,19 +53,22 @@ def rewrite_ats_resume(resume_text, job_desc):
     The candidate is applying for the following job:
     {job_desc}
 
-    Rewrite the resume in an ATS-friendly format. Use clear section headings (Work Experience, Skills, Education, etc.), bullet points, and simple formatting for easy parsing.
+    Rewrite the resume in an ATS-friendly format. Use proper headings (Work Experience, Skills, Education, etc.), bullet points, and clear formatting for easy parsing.
     """
 
-    response = genai.chat(messages=[{"role": "user", "content": prompt}])
-    return response.text if response else "No optimized resume available."
+    # Initialize Gemini AI model
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(prompt)
 
-# Function to create a properly formatted ATS-friendly resume PDF
+    return response.text if response else "Could not rewrite the resume."
+
+# Function to create an ATS-optimized resume PDF
 def create_ats_pdf(text, filename="ATS_Optimized_Resume.pdf"):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", size=11)
-    
+
     for line in text.split("\n"):
         if line.strip():
             if ":" in line:  # Formatting section headings
@@ -71,11 +77,11 @@ def create_ats_pdf(text, filename="ATS_Optimized_Resume.pdf"):
                 pdf.set_font("Arial", size=11)
             else:
                 pdf.cell(200, 8, txt=f"• {line}", ln=True, align='L')
-    
+
     pdf.output(filename)
 
 # Streamlit UI
-st.title("📄 AI Resume Matchmaking System (Powered by Gemini AI)")
+st.title("📄 AI Resume Matchmaking System (ATS-Friendly)")
 st.write("Upload your resume and paste a job description to check compatibility, get ATS-friendly improvement suggestions, and download an optimized resume.")
 
 # Upload Resume PDF
@@ -111,3 +117,4 @@ if uploaded_file is not None:
 
         else:
             st.warning("⚠ Please enter the job description.")
+
