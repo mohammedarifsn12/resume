@@ -113,8 +113,8 @@ if uploaded_file is not None:
                     try:
                         pdf_bytes = create_ats_pdf(rewritten_resume)
                         b64 = base64.b64encode(pdf_bytes).decode()
-                        href = f'<a href="data:application/pdf;base64,{b64}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>'
-                        st.markdown(href, unsafe_allow_html=True)  # Link appears *after* click
+                        href = f"data:application/pdf;base64,{b64}"  # Corrected href format
+                        st.components.v1.html(f'<a href="{href}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>')
 
                         print(f"Length of pdf_bytes: {len(pdf_bytes)}")
                         print(f"Href: {href[:200]}...")
