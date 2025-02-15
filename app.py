@@ -5,8 +5,8 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fpdf import FPDF
 
-# Configure Google Gemini API Key
-genai.configure(api_key="GEMINI_API_KEY")  # Replace with your Gemini API key
+# Configure Google Gemini API Key securely
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # Load pre-trained sentence transformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -14,10 +14,17 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
-    text = ""
-    for page in pdf_reader.pages:
-        text += page.extract_text() + "\n"
+    text = "".join([page.extract_text() + "\n" for page in pdf_reader.pages])
     return text
+
+# Function to get response from Gemini AI
+def get_gemini_response(prompt):
+    try:
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(prompt)
+        return response.text if response and hasattr(response, "text") else "No response available."
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 # Function to calculate resume-job match percentage
 def calculate_match(resume_text, job_desc):
@@ -37,12 +44,7 @@ def get_resume_improvements(resume_text, job_desc):
 
     Please suggest improvements to make the resume ATS-friendly. Highlight missing skills, weak points, and best formatting practices.
     """
-
-    # Initialize Gemini AI model
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
-
-    return response.text if response else "No suggestions available."
+    return get_gemini_response(prompt)
 
 # Function to rewrite resume in an ATS-friendly format
 def rewrite_ats_resume(resume_text, job_desc):
@@ -55,12 +57,7 @@ def rewrite_ats_resume(resume_text, job_desc):
 
     Rewrite the resume in an ATS-friendly format. Use proper headings (Work Experience, Skills, Education, etc.), bullet points, and clear formatting for easy parsing.
     """
-
-    # Initialize Gemini AI model
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(prompt)
-
-    return response.text if response else "Could not rewrite the resume."
+    return get_gemini_response(prompt)
 
 # Function to create an ATS-optimized resume PDF
 def create_ats_pdf(text, filename="ATS_Optimized_Resume.pdf"):
@@ -71,7 +68,7 @@ def create_ats_pdf(text, filename="ATS_Optimized_Resume.pdf"):
 
     for line in text.split("\n"):
         if line.strip():
-            if ":" in line:  # Formatting section headings
+            if ":" in line:
                 pdf.set_font("Arial", style="B", size=12)
                 pdf.cell(200, 8, txt=line, ln=True, align='L')
                 pdf.set_font("Arial", size=11)
@@ -113,8 +110,7 @@ if uploaded_file is not None:
             if st.button("Download ATS-Friendly Resume as PDF"):
                 create_ats_pdf(rewritten_resume)
                 with open("ATS_Optimized_Resume.pdf", "rb") as file:
-                    st.download_button(label="📥 Download Resume", data=file, file_name="ATS_Optimized_Resume.pdf", mime="application/pdf")
-
+                    st.download_button(label="📥 Download Resume", data=file.read(), file_name="ATS_Optimized_Resume.pdf", mime="application/pdf")
         else:
             st.warning("⚠ Please enter the job description.")
 
