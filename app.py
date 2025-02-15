@@ -4,8 +4,9 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fpdf import FPDF
+import io
 
-# Configure Google Gemini API Key securely
+# Configure Google Gemini API Key (Stored in Streamlit Secrets)
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # Load pre-trained sentence transformer model
@@ -14,17 +15,10 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 # Function to extract text from PDF
 def extract_text_from_pdf(pdf_file):
     pdf_reader = PyPDF2.PdfReader(pdf_file)
-    text = "".join([page.extract_text() + "\n" for page in pdf_reader.pages])
+    text = ""
+    for page in pdf_reader.pages:
+        text += page.extract_text() + "\n"
     return text
-
-# Function to get response from Gemini AI
-def get_gemini_response(prompt):
-    try:
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
-        return response.text if response and hasattr(response, "text") else "No response available."
-    except Exception as e:
-        return f"Error: {str(e)}"
 
 # Function to calculate resume-job match percentage
 def calculate_match(resume_text, job_desc):
@@ -32,6 +26,12 @@ def calculate_match(resume_text, job_desc):
     job_embedding = model.encode([job_desc])
     similarity_score = cosine_similarity(resume_embedding, job_embedding)[0][0] * 100
     return similarity_score
+
+# Function to interact with Gemini AI
+def get_gemini_response(prompt):
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(prompt)
+    return response.text if response else "No response available."
 
 # Function to get AI-powered resume improvement suggestions
 def get_resume_improvements(resume_text, job_desc):
@@ -59,8 +59,8 @@ def rewrite_ats_resume(resume_text, job_desc):
     """
     return get_gemini_response(prompt)
 
-# Function to create an ATS-optimized resume PDF
-def create_ats_pdf(text, filename="ATS_Optimized_Resume.pdf"):
+# Function to create an ATS-optimized resume PDF in memory
+def create_ats_pdf(text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
@@ -68,14 +68,19 @@ def create_ats_pdf(text, filename="ATS_Optimized_Resume.pdf"):
 
     for line in text.split("\n"):
         if line.strip():
-            if ":" in line:
+            if ":" in line:  # Formatting section headings
                 pdf.set_font("Arial", style="B", size=12)
                 pdf.cell(200, 8, txt=line, ln=True, align='L')
                 pdf.set_font("Arial", size=11)
             else:
                 pdf.cell(200, 8, txt=f"• {line}", ln=True, align='L')
 
-    pdf.output(filename)
+    # Save PDF to a BytesIO buffer instead of a file
+    pdf_buffer = io.BytesIO()
+    pdf.output(pdf_buffer)
+    pdf_buffer.seek(0)
+
+    return pdf_buffer
 
 # Streamlit UI
 st.title("📄 AI Resume Matchmaking System (ATS-Friendly)")
@@ -106,17 +111,15 @@ if uploaded_file is not None:
             rewritten_resume = rewrite_ats_resume(resume_text, job_desc)
             st.text_area("ATS-Friendly Resume", rewritten_resume, height=300)
 
-            # Download as PDF
+            # Button to download ATS-optimized resume as PDF
             if st.button("Download ATS-Friendly Resume as PDF"):
-                create_ats_pdf(rewritten_resume)
-                with open("ATS_Optimized_Resume.pdf", "rb") as file:
-                    pdf_data = file.read()
-                    st.download_button(
-                        label="📥 Download Resume",
-                        data=pdf_data,
-                        file_name="ATS_Optimized_Resume.pdf",
-                        mime="application/pdf"
-                    )
+                pdf_buffer = create_ats_pdf(rewritten_resume)  # Generate PDF in memory
+                st.download_button(
+                    label="📥 Download Resume",
+                    data=pdf_buffer,
+                    file_name="ATS_Optimized_Resume.pdf",
+                    mime="application/pdf"
+                )
         else:
             st.warning("⚠ Please enter the job description.")
 
