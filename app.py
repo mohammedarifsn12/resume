@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fpdf import FPDF
 import io
+import base64
 
 # Configure Google Gemini API Key (Stored in Streamlit Secrets)
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
@@ -59,7 +60,7 @@ def rewrite_ats_resume(resume_text, job_desc):
     """
     return get_gemini_response(prompt)
 
-# Function to create an ATS-optimized resume PDF in memory
+# Function to create an ATS-optimized resume PDF in memory and return bytes
 def create_ats_pdf(text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -75,12 +76,11 @@ def create_ats_pdf(text):
             else:
                 pdf.cell(200, 8, txt=f"• {line}", ln=True, align='L')
 
-    # Save PDF to a BytesIO buffer instead of a file
     pdf_buffer = io.BytesIO()
     pdf.output(pdf_buffer)
     pdf_buffer.seek(0)
-
-    return pdf_buffer
+    pdf_bytes = pdf_buffer.getvalue()
+    return pdf_bytes
 
 # Streamlit UI
 st.title("📄 AI Resume Matchmaking System (ATS-Friendly)")
@@ -101,26 +101,20 @@ if uploaded_file is not None:
             match_score = calculate_match(resume_text, job_desc)
             st.success(f"✅ Match Score: {match_score:.2f}%")
 
-            # Get improvement suggestions
             st.subheader("🔹 Resume Improvement Suggestions")
             suggestions = get_resume_improvements(resume_text, job_desc)
             st.write(suggestions)
 
-            # Auto Rewrite ATS-Friendly Resume
             st.subheader("🔹 ATS-Optimized Resume")
             rewritten_resume = rewrite_ats_resume(resume_text, job_desc)
             st.text_area("ATS-Friendly Resume", rewritten_resume, height=300)
 
-            # Button to download ATS-optimized resume as PDF
             if st.button("Download ATS-Friendly Resume as PDF"):
-                pdf_buffer = create_ats_pdf(rewritten_resume)  # Generate PDF in memory
-                st.download_button(
-                    label="📥 Download Resume",
-                    data=pdf_buffer,
-                    file_name="ATS_Optimized_Resume.pdf",
-                    mime="application/pdf"
-                )
+                pdf_bytes = create_ats_pdf(rewritten_resume)
+                b64 = base64.b64encode(pdf_bytes).decode()
+                href = f'<a href="data:application/pdf;base64,{b64}" download="ATS_Optimized_Resume.pdf">📥 Download Resume</a>'
+                st.markdown(href, unsafe_allow_html=True)
+
         else:
             st.warning("⚠ Please enter the job description.")
-
 
