@@ -110,7 +110,14 @@ if uploaded_file is not None:
             if st.button("Download ATS-Friendly Resume as PDF"):
                 create_ats_pdf(rewritten_resume)
                 with open("ATS_Optimized_Resume.pdf", "rb") as file:
-                    st.download_button(label="📥 Download Resume", data=file.read(), file_name="ATS_Optimized_Resume.pdf", mime="application/pdf")
+                    pdf_data = file.read()
+                    st.download_button(
+                        label="📥 Download Resume",
+                        data=pdf_data,
+                        file_name="ATS_Optimized_Resume.pdf",
+                        mime="application/pdf"
+                    )
         else:
             st.warning("⚠ Please enter the job description.")
+
 
