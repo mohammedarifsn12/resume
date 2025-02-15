@@ -1,0 +1,8 @@
+streamlit
+PyPDF2
+google-generativeai
+sentence-transformers
+scikit-learn
+fpdf
+numpy
+torch
