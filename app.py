@@ -39,30 +39,29 @@ def calculate_match(resume_text, job_desc):
     similarity_score = cosine_similarity(resume_embedding, job_embedding)[0][0] * 100
     return similarity_score
 
-# Function to interact with Groq AI
-def get_groq_response(prompt):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
+# Async function to interact with Groq AI
+async def fetch_groq_response(prompt):
     try:
-        response = loop.run_until_complete(
-            client.chat.completions.create(
-                model="mixtral-8x7b-32768",
-                messages=[{"role": "user", "content": prompt}]
-            )
+        response = await client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user", "content": prompt}]
         )
         return response.choices[0].message.content if response.choices else "No response available."
     except Exception as e:
         return f"❌ Error: {str(e)}"
 
+# Wrapper function for Streamlit
+def get_groq_response(prompt):
+    return asyncio.run(fetch_groq_response(prompt))
+
 # Function to get AI-powered resume improvement suggestions
 def get_resume_improvements(resume_text, job_desc):
     prompt = f"""
     Here is a candidate's resume:
-    {resume_text}
+    {resume_text[:3000]}  # Limit text to avoid API token limits
 
     The candidate is applying for the following job:
-    {job_desc}
+    {job_desc[:2000]}  # Limit text size
 
     Please suggest improvements to make the resume ATS-friendly. Highlight missing skills, weak points, and best formatting practices.
     """
@@ -72,10 +71,10 @@ def get_resume_improvements(resume_text, job_desc):
 def rewrite_ats_resume(resume_text, job_desc):
     prompt = f"""
     Here is a candidate's resume:
-    {resume_text}
+    {resume_text[:3000]}  # Limit text to avoid API token limits
 
     The candidate is applying for the following job:
-    {job_desc}
+    {job_desc[:2000]}  # Limit text size
 
     Rewrite the resume in an ATS-friendly format. Use proper headings (Work Experience, Skills, Education, etc.), bullet points, and clear formatting for easy parsing.
     """
@@ -138,7 +137,6 @@ if uploaded_file is not None:
                         st.markdown(href, unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"❌ Error during PDF creation/download: {e}")
-
             else:
                 st.warning("⚠ Please enter the job description.")
 
